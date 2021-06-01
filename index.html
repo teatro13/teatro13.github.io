@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script type="module" charset="utf-8">
+
+import Scenarist from './scenarist.mjs';
+
+const base = `https://gist.githubusercontent.com/${ new URL ( document .URL ) .hash .substring ( 1 ) }/raw/`;
+
+window .onload = () => {
+
+const $ = Scenarist ();
+
+$ ( ( $, scene, ... paths ) => Promise .all ( paths .map ( path => $ (
+
+path,
+
+fetch ( new Request ( new URL ( path, base ), {
+
+mode: 'cors'
+
+} ) )
+.then ( response => {
+
+if ( ! response .ok )
+throw Error ( `HTTP Error: ${ response .status }` );
+
+return response .text ();
+
+} )
+.then ( async text => {
+
+const url = new URL ( `data:${ scene === '?script' ? 'text/javascript' : 'text/css' },${ encodeURIComponent ( text ) }` );
+
+if ( scene === '?script' )
+return import ( url );
+
+const link = document .head .appendChild ( document .createElement ( 'link' ) );
+
+link .href = url;
+link .rel = 'stylesheet';
+link .type = 'text/css';
+
+return link;
+
+} )
+
+) ) ), '?script', '?style' );
+
+$ ( '?script', 'play.mjs' )
+.then ( ( [ { play } ] ) => play ( $ ) )
+.catch ( error => console .error ( error .stack ) );
+
+};
+
+</script>
+
+</head>
+
+<body></body>
+
+</html>
