@@ -7,19 +7,11 @@
 
 <script type="module" charset="utf-8">
 
-import Scenarist from './scenarist.mjs';
+let base;
 
-const base = `https://gist.githubusercontent.com/${ new URL ( document .URL ) .hash .substring ( 1 ) }/raw/`;
+const load = ( $, action, ... paths ) => Promise .all ( paths .map ( path => {
 
-window .onload = () => {
-
-const $ = Scenarist ();
-
-$ ( ( $, scene, ... paths ) => Promise .all ( paths .map ( path => $ (
-
-path,
-
-fetch ( new Request ( new URL ( path, base ), {
+const target = fetch ( new Request ( new URL ( path, base ), {
 
 mode: 'cors'
 
@@ -34,10 +26,25 @@ return response .text ();
 } )
 .then ( async text => {
 
-const url = new URL ( `data:${ scene === '?script' ? 'text/javascript' : 'text/css' },${ encodeURIComponent ( text ) }` );
+const url = new URL ( `data:${ action === '?script' || action === '?module' ? 'text/javascript' : 'text/css' },${ encodeURIComponent ( text ) }` );
 
-if ( scene === '?script' )
+switch ( action ) {
+
+case '?module':
+
 return import ( url );
+
+case '?script':
+
+const script = document .head .appendChild ( document .createElement ( 'script' ) );
+
+script .src = url;
+script .charset = 'utf-8';
+script .type = 'text/javascript';
+
+return script;
+
+case '?style':
 
 const link = document .head .appendChild ( document .createElement ( 'link' ) );
 
@@ -47,13 +54,33 @@ link .type = 'text/css';
 
 return link;
 
-} )
+}
 
-) ) ), '?script', '?style' );
+} );
 
-$ ( '?script', 'play.mjs' )
+if ( typeof $ === 'function' )
+( async () => await $ ( path, target ) ) ();
+
+return target;
+
+} ) );
+
+window .onload = async () => {
+
+base = 'https://gist.githubusercontent.com/faddymichel/bc4a665fc2ccb0c22ec454d0ecf89059/raw/';
+
+( await load ( null, '?script', 'scenarist.js' ) ) [ 0 ] .onload = () => {
+
+const $ = Scenarist ();
+base = `https://gist.githubusercontent.com/${ new URL ( document .URL ) .hash .substring ( 1 ) }/raw/`;
+
+$ ( load, '?module', '?script', '?style' );
+
+$ ( '?module', 'play.mjs' )
 .then ( ( [ { play } ] ) => play ( $ ) )
 .catch ( error => console .error ( error .stack ) );
+
+};
 
 };
 
